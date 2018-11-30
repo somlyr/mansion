@@ -1,0 +1,85 @@
+/api/ids/settings/get
+```
+{
+  "ids": {
+    "general": {
+      "enabled": "1",
+      "promisc": "1",
+      "interfaces": {
+        "wan": {
+          "value": "WAN",
+          "selected": 0
+        },
+        "lan": {
+          "value": "LAN",
+          "selected": 1
+        },
+        "opt1": {
+          "value": "ENP1",
+          "selected": 1
+        },
+        "opt2": {
+          "value": "ENP2",
+          "selected": 1
+        }
+      },
+      "homenet": {
+        "192.168.0.0/16": {
+          "value": "192.168.0.0/16",
+          "selected": 1
+        },
+        "10.0.0.0/8": {
+          "value": "10.0.0.0/8",
+          "selected": 1
+        },
+        "172.16.0.0/12": {
+          "value": "172.16.0.0/12",
+          "selected": 1
+        }
+      },
+      "defaultPacketSize": "",
+      "UpdateCron": {
+        "": {
+          "value": "none",
+          "selected": 0
+        },
+        "88d05051-9b9f-4757-95e7-e32b22d9655a": {
+          "value": "ids rule updates",
+          "selected": 1
+        }
+      },
+      "AlertLogrotate": {
+        "": {
+          "value": "Default",
+          "selected": 0
+        },
+        "W0D23": {
+          "value": "\u6bcf\u5468",
+          "selected": 1
+        },
+        "D0": {
+          "value": "\u6bcf\u5929",
+          "selected": 0
+        }
+      },
+      "AlertSaveLogs": "4",
+      "MPMAlgo": {
+        "": {
+          "value": "Default",
+          "selected": 0
+        },
+        "ac": {
+          "value": "Aho-Corasick",
+          "selected": 1
+        },
+        "hs": {
+          "value": "Hyperscan",
+          "selected": 0
+        }
+      },
+      "syslog": "0",
+      "LogPayload": "0"
+    }
+  }
+}
+```
