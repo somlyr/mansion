@@ -1,4 +1,5 @@
 /api/ids/settings/get
+print(json.dumps(oo,indent=2,sort_keys=False))
 ```
 {
   "ids": {
