@@ -40,7 +40,7 @@ def mat_print_title(text):
 	cprint(text,"white","on_blue")
 	cprint("-"*mat_print_line_max,'blue')
 
-def mat_print_item(desc,val,warning=False):
+def mat_print_item(desc,val,level="info"):
 	t_desc_len = len(desc)
 	t_line_seg_num = int(t_desc_len/mat_print_line_desc_max)
 	t_line_seg_last = t_desc_len%mat_print_line_desc_max
@@ -52,13 +52,30 @@ def mat_print_item(desc,val,warning=False):
 	if t_line_seg_last > 0:
 		print(desc[t_line_seg_num*mat_print_line_desc_max:],end="")
 
-	if warning:
+	if level == "error":
 		print("=>" + " "*(t_space_num + 1) + "[ {} ]".format(colored(val,"white","on_red")))
+	elif level == "warning":
+		print("=>" + " "*(t_space_num + 1) + "[ {} ]".format(colored(val,"white","on_yellow")))
 	else:
 		if val in ("Disabled","Off"):
 			print("=>" + " "*(t_space_num + 1) + "[ {} ]".format(colored(val,"white")))
 		else:
 			print("=>" + " "*(t_space_num + 1) + "[ {} ]".format(colored(val,"white","on_green")))
+
+def mat_request(session,method="get",url=None,data=None,desc="mat request",err_break=True):
+	sess_rep = None
+	try:
+		if method == "post":
+			sess_rep = session.post(url,data)
+		else:
+			sess_rep = session.get(url)		
+	except:
+		mat_print_item(desc,"Failed","error")
+		if err_break:
+			sys.exit(1)
+		else:
+			pass
+	return sess_rep
 
 # Output the collected arguments
 if args.verbose:
@@ -69,24 +86,6 @@ if args.verbose:
 	mat_print_item("login password",args.login_password)
 
 # Test case,test procedure will be blocked by ERROR
-mat_tcs_setting = {
-	"login_test":{
-	    "desc": "Login Mansion System"
-	},
-	"service_check":{
-	    "desc": "Checking Mansion Service Status"
-	},
-	"setting_check":{
-	    "desc": "Checking Mansion Service Setting"
-	},
-	"hardware_check":{
-	    "desc": "Checking Mansion Hardware Setting"
-	},
-	"license_check":{
-	    "desc": "Checking Mansion License"
-	}
-}
-
 # invalid externsion's warning output
 warnings.filterwarnings('ignore')
 
@@ -95,45 +94,54 @@ mat_session_verify = False
 mat_session_rep = None
 mat_session_key = None
 mat_session_key_val = None
+mat_print_item_desc = ""
 # T1: login_test
+#### mat_login_test
 mat_print_title("<--Login System-->")
 mat_session = HTMLSession()
 mat_session.verify = mat_session_verify
+# T1.1 login connect
+mat_print_item_desc = "Connect to {}".format(args.target_url)
 try:
     mat_session_rep = mat_session.get(args.target_url)
 except:
-    mat_print_item("Connect to {}".format(args.target_url),"Failed",True)
+    mat_print_item(mat_print_item_desc,"Failed",level="error")
     sys.exit(1)
-mat_print_item("Connect to {}".format(args.target_url),"Success")
-
+mat_print_item(mat_print_item_desc,"Success")
+# T1.2 login auth
 temp_ele = mat_session_rep.html.xpath('//form/input')
 mat_session_key = temp_ele[0].attrs["name"]
 mat_session_key_val = temp_ele[0].attrs["value"]
+mat_print_item_desc = "Authentication with {}:{}".format(args.login_username,args.login_password)
 try:
     mat_session_rep = mat_session.post(args.target_url,data={
 	    mat_session_key:mat_session_key_val,
 	    "usernamefld":args.login_username,"passwordfld":args.login_password,"login":1})
 except:
-	mat_print_item("Authentication with {}:{}".format(args.login_username,args.login_password),"Failed",True)
+	mat_print_item(mat_print_item_desc,"Failed",level="error")
 	sys.exit(1)
 if mat_session_rep.ok:
-	mat_print_item("Authentication with {}:{}".format(args.login_username,args.login_password),"Success")
+	mat_print_item(mat_print_item_desc,"Success")
 else:
-	mat_print_item("Authentication with {}:{}".format(args.login_username,args.login_password),"Failed",True)
+	mat_print_item(mat_print_item_desc,"Failed",level="error")
 	sys.exit(1)
 
 # T2: system_check
+#### mat_system_check_test
 mat_print_title("<--System Check-->")
+# T2.1 system info get
+mat_print_item_desc = "System information get"
 try:
 	mat_session_rep = mat_session.get(args.target_url+"/widgets/api/get.php?load=system,traffic,gateway,interfaces&_="+str(time.time()))
 except:
-	mat_print_item("System information get","Failed",True)
+	mat_print_item(mat_print_item_desc,"Failed",level="error")
 	sys.exit(1)
 if mat_session_rep.ok:
-	mat_print_item("System information get","Success")
+	mat_print_item(mat_print_item_desc,"Success")
 else:
-	mat_print_item("System information get","Failed",True)
+	mat_print_item(mat_print_item_desc,"Failed",level="error")
 	sys.exit(1)
+# T2.1 system info detail get
 temp_json = json.loads(mat_session_rep.html.html)
 try:
 	temp_obj = temp_json["data"]["system"]
@@ -189,7 +197,7 @@ try:
 
 	temp_obj = temp_json["data"]["system"]["disk"]["swap"]
 	if 0 != len(temp_obj["device"]):
-	    mat_print_item("System disk swap","On",True)
+	    mat_print_item("System disk swap","On",level="warning")
 	else:
 		mat_print_item("System disk swap","Off")
 
@@ -206,19 +214,21 @@ except:
 # print(json.dumps(temp_json["data"],indent=2))
 
 # T3: service_check
+#### mat_service_check_test
 mat_print_title("<--Service Check-->")
+mat_print_item_desc = "Service ids status"
 try:
 	mat_session_rep = mat_session.get(args.target_url + "/api/ids/service/status")
 	if mat_session_rep.ok:
 	    temp_json = json.loads(mat_session_rep.html.html)
 	    if temp_json.get("status") == "running":
-	        mat_print_item("Service ids status","Running")
+	        mat_print_item(mat_print_item_desc,"Running")
 	    else:
-	    	mat_print_item("Service ids status","Stopped",True)
+	    	mat_print_item(mat_print_item_desc,"Stopped",level="warning")
 	else:
-		mat_print_item("Service ids status","Unkonw",True)
+		mat_print_item(mat_print_item_desc,"Unkonw",level="error")
 except:
-	mat_print_item("Service ids status","Unkonw",True)
+	mat_print_item(mat_print_item_desc,"Unkonw",level="error")
 	pass
 
 try:
@@ -282,25 +292,26 @@ try:
 
 	#print(mat_session_rep.html.html)
 except:
-	mat_print_item("Service ntp status get","Failed",True)
+	mat_print_item("Service ntp status get","Failed",level="error")
 	pass
 
 # T4: setting_check
+#### mat_setting_check_test
 mat_print_title("<--Setting Check-->")
 try:
     mat_session_rep = mat_session.get(args.target_url+"/system_general.php")
 except:
-	mat_print_item("Setting general get","Failed",True)
+	mat_print_item("Setting general get","Failed",level="error")
 	pass
 
 try:
 	temp_obj = mat_session_rep.html.find('#timezone [selected="selected"]',first=True).text
 	if temp_obj != "Asia/Shanghai":
-		mat_print_item("Setting timezone({})".format(temp_obj),"Warning",True)
+		mat_print_item("Setting timezone({})".format(temp_obj),"Warning",level="warning")
 	else:
 		mat_print_item("Setting timezone({})".format(temp_obj),"OK")
 except:
-	mat_print_item("Setting timezone get","Failed",True)
+	mat_print_item("Setting timezone get","Failed",level="error")
 	pass
 
 try:
@@ -312,7 +323,8 @@ try:
     	    temp_str = "Disabled"
     	mat_print_item("Setting dns remote [{}:{}]".format(x.attrs["name"],x.attrs["value"]),temp_str)
 except:
-	mat_print_item("Setting dns remote get","Failed",True)
+	mat_print_item("Setting dns remote get","Failed",level="error")
+	pass
 
 try:
 	temp_obj = mat_session_rep.html.find('[name="dnsallowoverride"]')[0]
@@ -322,7 +334,7 @@ try:
 		temp_str = "No"
 	mat_print_item("Setting dns override by SP setting",temp_str)
 except:
-	mat_print_item("Setting dns override by SP setting","Unkonw",True)
+	mat_print_item("Setting dns override by SP setting","Unkonw",level="error")
 	pass
 
 try:
@@ -378,7 +390,7 @@ try:
 	mat_print_item("Setting admin console passwd protected",temp_str)
 
 except:
-	mat_print_item("Setting admin get","Failed",True)
+	mat_print_item("Setting admin get","Failed",level="error")
 	sys.exit(1)
 
 try:
@@ -410,21 +422,23 @@ try:
 		if temp_obj.attrs.get("checked") == "checked": temp_str = temp_str + "|" + temp_obj.attrs["name"]
 	mat_print_item("Setting syslog service({})".format(temp_str),"Checked")
 except:
-	mat_print_item("Setting log get","Failed",True)
-	pass
+	mat_print_item("Setting log get","Failed",level="error")
+	sys.exit(1)
 
 # T5: license_check
+#### mat_license_check_test
 mat_print_title("<--License Check-->")
 try:
 	mat_session_rep = mat_session.get(args.target_url+"/license.php")
 except:
-	mat_print_item("License check","Failed",True)
+	mat_print_item("License check","Failed",level="error")
+	sys.exit(1)
 try:
 	temp_obj = mat_session_rep.html.search('<div class="alert {alert_lic}" role="alert"')["alert_lic"]
 	if temp_obj != "alert-info":
-		mat_print_item("License check","Failed",True)
+		mat_print_item("License check","Failed",level="warning")
 	else:
 		mat_print_item("License check","Success")
 except:
-	mat_print_item("License check","Unkown",True)
+	mat_print_item("License check","Unkown",level="error")
 	sys.exit(1)
