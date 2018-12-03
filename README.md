@@ -19,4 +19,5 @@ print(example1)
 cprint("some text","red","on_white",attrs=["bold"])
 ```
 >* 参考
+
 https://pypi.org/project/termcolor/
